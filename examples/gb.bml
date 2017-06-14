@@ -1,0 +1,53 @@
+<bml>
+<model>
+	<set name="_users">
+		<block name="_login" type="string" />
+		<block name="_password" type="password" />
+		<block name="password_change" type="permissions" default="owner:u" scope=":_password" />
+		<block name="mypermissions" type="permissions" default="all:cr" scope="branch" />
+		<set name="entries">
+			<block name="myname" type="string" min="2" max="40" chars="A-Za-z0-9" />
+			<block name="msg" type="string" min="2" max="500" />
+			<block name="mydatetime" type="datetime" />
+			<block name="mypermissions" type="permissions" scope="self branch" />
+		</set>
+	</set>
+</model>
+
+<location base="/[entries#page], /" template="main.tmpl">
+	<set name="entries" order="mydatetime DESC" limit="10">
+		<block name="myname" />
+		<block name="msg" />
+		<block name="mydatetime" />
+	</set>
+</location>
+
+<location base="/act" onsuccess="previous" template="act.tmpl">
+	<set name="entries" act="@input" id="@input">
+		<block name="myname" oncreate="@input" />
+		<block name="msg" oncreate="@input" />
+		<block name="mydatetime" oncreate="@current" />
+	</set>
+</location>
+
+<location base="/admin/[entries#page], /admin" template="admin.tmpl">
+	<set name="entries" order="mydatetime DESC">
+		<block name="myname" />
+		<block name="msg" />
+		<block name="mydatetime" />
+	</set>
+</location>
+
+<location base="/auth" onsuccess="/admin" template="auth.tmpl">
+	<set name="_users" act="auth">
+		<block name="_login" onauth="@input" />
+		<block name="_password" onauth="@input" />
+	</set>
+</location>
+
+<location base="/logout" onsuccess="/">
+	<set name="_users" act="logout">
+		
+	</set>
+</location>
+</bml>

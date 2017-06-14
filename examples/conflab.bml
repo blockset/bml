@@ -1,0 +1,244 @@
+<bml>
+<model>
+	<set name="sections">
+		<block name="section_access" type="permissions" scope="branch"
+				default="user:cr, owner:crud, all:-" />
+		<block name="title" type="string"/>
+		<block name="org" type="string"/>
+		<block name="sciences" type="string"/>
+		<block name="tech" type="string"/>
+		<block name="date_time_place" type="string"/>
+		<block name="contacts" type="string"/>
+		<block name="description" type="string"/>
+	
+		<set name="theses" relation="parent">
+			<set name="files" relation="parent">
+				<block name="doc" required="1" type="file"/>
+				<block name="type" required="1" type="number" min="1" max="4"/>
+			</set>
+			<set name="changes" relation="multi">
+				<block name="status" required="1" type="number" />
+				<block name="date" required="1" type="datetime" />
+				<block name="description" type="string" />
+			</set>
+			<block name="subject" required="1" type="string"/>
+			<block name="description" required="1" type="string"/>
+			<block name="supervisor" type="string"/>
+			<block name="last_date" type="datetime"/>
+			<block name="date_create" type="datetime"/>
+		</set>
+	</set>
+
+	<set name="_users">
+		<block name="_login" required="1" type="string" />
+		<block name="_password" required="1" type="string" />
+		<block name="status" type="string" />
+		<block name="surname" required="1" type="string" />
+		<block name="name" required="1" type="string" />
+		<block name="patronymic" type="string" />
+		<block name="dir" type="string" />
+		<block name="position" type="string" />
+		<block name="email_subscribe" type="number" />
+		<block name="date_log" type="datetime"/>
+		<block name="ip_log" type="ip" />
+		<block name="date_reg" type="datetime" />
+		<block name="ip_reg" type="ip" />
+		<block name="protect_code" type="captcha" mode="create" />
+	</set>
+</model>
+
+<!-- Вывод списка секций -->
+<location base="/sections" template="sectionList.tmpl" >
+	<set name="sections" order="id DESC">
+		<block name="title" />
+	</set>
+</location>
+
+<!-- Вывод информации о секции -->
+<location base="/sections/[section@id]" template="sectionView.tmpl">
+	<set name="sections" limit="1">
+		<block name="title" />
+		<block name="org" />
+		<block name="sciences" />
+		<block name="tech" />
+		<block name="date_time_place" />
+		<block name="contacts" />
+		<block name="description" />
+	</set>
+</location>
+
+<!-- Редактирование информации о секции или создание новой -->
+<location base="/sections/[section@id]/edit" template="sectionEdit.tmpl">
+	<set name="sections" act="@input" validact="create update">
+		<block name="title" onupdate="@input" oncreate="@input" />
+		<block name="org" onupdate="@input" oncreate="@input" />
+		<block name="sciences" onupdate="@input" oncreate="@input" />
+		<block name="tech" onupdate="@input" oncreate="@input" />
+		<block name="date_time_place" onupdate="@input" oncreate="@input" />
+		<block name="contacts" onupdate="@input" oncreate="@input" />
+		<block name="description" onupdate="@input" oncreate="@input" />
+	</set>
+</location>
+
+<!-- Вывод программы секции -->
+<location base="/sections/[section@id]/program" template="sectionProgram.tmpl">
+	<set name="sections" limit="1">
+		<block name="title" />
+		<set name="theses">
+			<block name="subject" />
+			<block name="supervisor" />
+			<block name="description" />
+		</set>
+	</set>
+</location>
+
+<!-- Информация о поданных/модерируемых тезисах -->
+<location base="/lk" template="lk.tmpl">
+	<set name="theses" order="@parentid DESC, subject DESC">
+		<set name="changes" act="@input">
+			<block name="status" oncreate="1" />
+			<block name="date" oncreate="@current" />
+			<block name="description" oncreate="No files" />
+		</set>
+		<block name="subject" oncreate="@input" />
+		<block name="supervisor" oncreate="@input" />
+		<block name="last_date" oncreate="@current" />
+		<block name="date_create" oncreate="@current" />
+	</set>
+</location>
+
+<!-- Подача новой заявки -->
+<location base="/sections/[section@id]/apply" template="apply.tmpl"
+			onsuccess="/sections/[section@id]/filesupload" onfail="self">
+	<set name="theses" act="@input">
+		<set name="files" act="@input">
+			<block name="doc" oncreate="@input" />
+			<block name="type" oncreate="@input" />
+		</set>
+		<set name="changes" act="@input">
+			<block name="status" oncreate="1" />
+			<block name="date" oncreate="@current" />
+			<block name="description" oncreate="No files" />
+		</set>
+		<block name="subject" oncreate="@input" />
+		<block name="supervisor" oncreate="@input" />
+		<block name="last_date" oncreate="@current" />
+		<block name="date_create" oncreate="@current" />
+	</set>
+</location>
+
+<!-- Загрузка файлов к ней -->
+<location base="/sections/[section@id]/[thesis@id]/filesupload" template="applyfiles.tmpl">
+	<set name="theses">
+		<set name="files" act="@input">
+			<block name="doc" oncreate="@input" onupdate="@input" />
+			<block name="type" oncreate="@input" onupdate="@input" />
+		</set>
+		<set name="changes" act="create">
+			<block name="status" oncreate="0" />
+			<block name="date" oncreate="@current" />
+			<block name="description" oncreate="In processing" />
+		</set>
+	</set>
+</location>
+
+<!-- Удаление файла -->
+<location base="/sections/[section@id]/[thesis@id]/filedelete" onsuccess="/lk"
+		  onfail="self" template="wrongfile.tmpl">
+	<set name="theses">
+		<set name="files" act="@input">
+			<block name="doc" ondelete="@input" />
+			<block name="type" />
+		</set>
+	</set>
+</location>
+
+<!-- Установка статуса заявки: 0 - в обработке, 1 - нет файлов, 2 - одобрено, 3 - отклонено -->
+<location base="/sections/[section@id]/[thesis@id]/changestatus" onsuccess="/lk?statuschanged">
+	<set name="changes" act="create">
+		<block name="status" onupdate="@input" />
+		<block name="date" onupdate="@current" />
+		<block name="description" onupdate="@input" />
+	</set>
+</location>
+
+<!-- Редактирование тезисов -->
+<location base="/sections/[section@id]/[thesis@id]" template="thesis.tmpl">
+	<set name="theses" act="@input">
+		<set name="files" act="@input">
+			<block name="doc" onupdate="@input" />
+			<block name="type" onupdate="@input" />
+		</set>
+		<set name="changes" act="update->create">
+			<block name="status" oncreate="0" />
+			<block name="date" oncreate="@current" />
+			<block name="description" oncreate="In processing" />
+		</set>
+		<block name="subject" onupdate="@input" />
+		<block name="supervisor" onupdate="@input" />
+		<block name="last_date" onupdate="@current" />
+	</set>
+</location>
+
+<!-- Админ-панель, главная вывод тезисов, в зависимости от прав пользователя -->
+<location base="/profile" template="profile.tmpl">
+	<set name="_users" act="@input">
+		<block name="_login" onread="@current" />
+		<block name="surname" onupdate="@input" />
+		<block name="name" onupdate="@input" />
+		<block name="patronymic" onupdate="@input" />
+		<block name="position" onupdate="@input" />
+	</set>
+</location>
+
+<!--
+	Права доступа:
+	1) superadmin : редактирование любых секций, приём/отклонение/добавление любых докладов;
+	2) secretary  : редактирование закрепленных за ним секций, прием/отклонение докладов по
+					этим секциям, добавление докладов;
+	3) user       : просмотр секций, автором которых является пользователь
+-->
+
+<!-- Авторизация пользователя -->
+<location base="/login" onsuccess="previous" onfail="wronguser.tmpl">
+	<set name="_users" act="auth">
+		<block name="_login" onread="@input" />
+		<block name="_password" onread="@input" />
+		<block name="date_log" onauth="@current" />
+		<block name="ip_log" onauth="@current" />
+	</set>
+</location>
+
+<!-- Выход пользователя -->
+<location base="/logout" onsuccess="previous">
+	<set name="_users" act="logout">
+
+	</set>
+</location>
+
+<!-- Регистрация пользователя -->
+<location base="/register" template="reg.tmpl">
+	<set name="_users" act="@input">
+		<block name="protect_code" onread="@input" />
+	</set>
+</location>
+
+<!-- Шаблон локации, отправляемой на E-Mail -->
+<location base="/registersend" template="regemail.tmpl" onsuccess="/register" onfail="/register">
+	<set name="_users" act="@input">
+		<block name="_login" oncreate="@input" />
+		<block name="_password" alias="checkpassword" onread="@input" />
+		<block name="_password" oncreate="@input" />
+		<block name="email" oncreate="@input" />
+		<block name="surname" oncreate="@input"  />
+		<block name="name" oncreate="@input" />
+		<block name="patronymic" oncreate="@input" />
+		<block name="dir" oncreate="@input" />
+		<block name="position" oncreate="@input" />
+		<block name="email_subscribe" oncreate="@input" />
+		<block name="date_reg" oncreate="@current" />
+		<block name="ip_reg" oncreate="@current" />
+		<block name="protect_code" onread="@input" />
+	</set>
+</location>
+</bml>

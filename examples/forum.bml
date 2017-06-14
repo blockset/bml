@@ -1,0 +1,842 @@
+<bml>
+<model>
+	<set name="sections" relation="parent">
+		<!-- trash - атрибут, указывающий, что в данном наборе присутствует функция помещения
+			удалённого экземпляра в корзину -->
+		<block name="catname" type="string" />
+		<block name="description" type="string" />
+		<block name="catsort" type="sort" />
+		<set name="caticons" relation="child">
+			<block name="icon" type="image" />
+		</set>
+		<block name="privateflag" type="number" min="0" max="1" />
+		<!-- Права на создание тем: любые блоки pubdate исключаются из области действия прав
+			доступа (для topics и для answers), также исключается набор messicons -->
+		<block name="messpermissions" type="permissions" scope="branch"
+			   without=":closed #messicons :important"
+			   default="user: cr, banned:-, owner:crud" />
+		<block name="visibility" type="permissions" scope="self" default="all:r, banned:-"
+			   active="r" />
+		<block name="moderpermissions" type="permissions" scope="branch"
+			   default="moder: crud" />
+		<set name="topics" relation="parent" trash="1" >
+			<block name="subject" type="string" />
+			<block name="message" type="string"
+					replacesrc="#smiles:code" replacedst="#smiles:smileimage" />
+			<block name="pubdate" type="datetime" oncreate="@current" />
+			<block name="pubip" type="ip" oncreate="@current" />
+			<block name="editdate" type="datetime" onupdate="@current" />
+			<block name="editip" type="ip" onupdate="@current" />
+			<block name="closed" type="permissions" default="user:cu, inherited:cr"
+				   scope="#answers" />
+			<block name="important" type="number" min="0" max="1" default="0" />
+			<block name="poll_question" type="string" />
+			<block name="polls" type="permissions" default="owner:cru,user:ru,all:r"
+				   scope="#poll_answers:answer_vote" />
+			<set name="poll_answers" relation="multi">
+				<block name="answer_text" type="string" />
+				<block name="answer_vote" type="rating" method="sum" multiple="0" />
+			</set>
+			<set name="messicons" relation="child">
+				<block name="icon" type="image" />
+			</set>
+			<set name="answers" relation="parent">
+				<block name="message" type="string" />
+				<block name="pubdate" type="datetime" />
+				<block name="pubip" type="ip" />
+				<block name="editdate" type="datetime" />
+				<block name="editip" type="ip" />
+			</set>
+		</set>
+	</set>
+	<set name="avatarcat">
+		<block name="category" type="string" />
+		<set name="avatars" relation="parent">
+			<block name="avatar" type="image" />
+		</set>
+	</set>
+	<set name="smilecat">
+		<block name="catname" type="string" />
+		<set name="smiles" relation="parent">
+			<block name="smileimage" type="image" />
+			<block name="code" type="string" />
+			<block name="descr" type="string" />
+		</set>
+	</set>
+	<set name="mail">
+		<block name="subject" type="string" />
+		<block name="message" type="string" />
+		<block name="read" type="number" min="0" max="1" />
+		<block name="pubdate" type="datetime" />
+		<block name="pubip" type="ip" />
+		<set name="recipient" clone="_users" relation="parent">
+			<block name="ignorelist" type="permissions" default="user: cr, owner: crud"
+				   scope="parent" />
+			<block name="ignorecontrol" type="permissions" scope=":ignorelist"
+				   default="owner:crud, all:-" />
+		</set>
+	</set>
+	<set name="_users">
+		<block name="_login" type="string" required="1" />
+		<block name="_password" required="1" />
+		<block name="email" type="email" confirm="1" required="1" />
+		<block name="createpermissions" type="permissions" scope=":email"
+			   default="owner: ru, guest: c, banned: -" />
+		<block name="userpermissions" type="permissions" scope="self"
+			   without=":_login :date_reg :ip_reg :status
+						 :currentlocation :userpermissions"
+			   default="owner: ru, guest: c, banned: -" />
+		<block name="adminpermissions" type="permissions" scope="self" default="moder: r" />
+		<block name="name" type="string" />
+		<block name="city" type="string" />
+		<block name="birthdate" type="datetime" />
+		<block name="inf" type="string" />
+		<block name="icq" type="number" />
+		<block name="website" type="url" />
+		<block name="avatar" type="image" maxsize="100KB" width="100px" height="100px" />
+		<block name="status" type="string" />
+		<block name="date_reg" type="datetime" />
+		<block name="ip_reg" type="ip" />
+		<block name="lastvisit_date" type="datetime" />
+		<block name="lastvisit_ip" type="ip" />
+		<block name="currentlocation" type="string" />
+		<block name="show_forum" type="number" min="0" max="2" />
+		<block name="show_smiles" type="number" min="0" max="2" />
+		<block name="show_avatars" type="number" min="0" max="1" />
+		<block name="protect_code" type="captcha" mode="create" />
+		<set name="_groups" relation="multi" limit="1">
+			<block name="_priority" type="sort" />
+			<block name="_name" type="string" />
+			<block name="description" type="string" />
+			<block name="color" type="string" />
+		</set>
+	</set>
+	<set name="banlist">
+		<!-- Глобальные права доступа, разрешено блокирование отдельных пользователей,
+			администраторам доступно всё -->
+		<block name="globalpermissions" type="permissions" scope="self #sections branch"
+			   default="admin: crud, all:r" />
+		<block name="bandate" type="datetime" default="@current" />
+		<block name="banexpires" type="datetime" expires="create" />
+		<block name="comment" type="string" />
+	</set>
+</model>
+
+<!-- Общая локация, в которой объявляются наборы, задействованные во всех остальных локациях -->
+<location base="@all">
+	<!-- Текущее местоположение пользователя -->
+	<set name="onlineusers" clone="_users" condition="lastvisit_date<15min"
+		order="lastvisit_date DESC">
+		<block name="_login" />
+	</set>
+</location>
+
+<!-- Главная страница -->
+<location base="/" template="main.tmpl">
+	<!-- сортируем по блоку catsort -->
+	<set name="sections" order="catsort ASC">
+		<block name="catname" />
+		<block name="description" />
+		<set name="caticons">
+			<block name="icon" />
+		</set>
+		<block name="privateflag" />
+		<!-- Выбирать имя автора -->
+		<!-- также производится подсчёт всех тем -->
+		<set name="topics" order="pubdate DESC" func="select, count, author">
+			<block name="subject" />
+			<block name="pubdate" />
+			<block name="important" />
+			<set name="answers" limit="1" order="pubdate DESC" func="select, count, author">
+				<block name="pubdate" />
+				<!-- Кроме даты создания другие блоки не выбираются -->
+			</set>
+		</set>
+	</set>
+	<set name="last_registered" clone="_users" limit="1" order="lastvisit_date DESC" >
+		<block name="_login" />
+	</set>
+	<set name="birthdays" clone="_users"
+			condition="birthdate.day=current AND birthdate.month=@current">
+		<block name="_login" />
+		<block name="birthdate" />
+	</set>
+	<set name="visitors" clone="_users" condition="lastvisit.date=@current">
+		<block name="_login" />
+	</set>
+	<!-- Текущее местоположение пользователя -->
+	<set name="now" clone="_users" act="update">
+		<!-- Текущий авторизованный пользователь -->
+		<block name="_login" onread="@current" /> 
+		<block name="currentlocation" onupdate="на главной странице" />
+	</set>
+</location>
+
+<!-- Страница внутри категории -->
+<location base="/[sections:catname]/, /[sections:catname]/[topics@page]" template="messages.tmpl">
+	<set name="sections">
+		<block name="catname" />
+		<set name="topics" order="important DESC, pubdate DESC" limit="20">
+			<block name="subject" />
+			<block name="message" />
+			<block name="pubdate" />
+			<block name="closed" />
+			<block name="important" />
+			<set name="messicons">
+				<block name="icon" />
+			</set>
+			<set name="answers" limit="1" order="pubdate DESC">
+				<block name="message" />
+				<block name="pubdate" />
+			</set>
+		</set>
+	</set>
+	<set name="now" clone="_users" act="update"><!-- Текущее местоположение пользователя -->
+		<block name="_login" onread="@current" /> <!-- Текущий авторизованный пользователь -->
+		<block name="currentlocation" onupdate="просматривает список тем" />
+	</set>
+</location>
+
+<!-- Страница создания новой категории -->
+<location base="/[sections:catname]/new" onsuccess="/[sections:catname]/[topics:subject]/"
+			template="edittopic.tmpl">
+	<set name="sections">
+		<block name="catname" />
+		<set name="topics" act="@input">
+			<block name="subject" oncreate="@input" />
+			<block name="message" oncreate="@input" />
+			<block name="pubdate" oncreate="@current" />
+			<block name="pubip" oncreate="@current" />
+			<set name="messicons" alias="icon">
+				<block name="icon" />
+			</set>
+			<set name="poll_answers">
+				<block name="answer_text" oncreate="@input" />
+				<block name="answer_vote" oncreate="@input" />
+			</set>
+		</set>
+	</set>
+	<!-- Текущее местоположение пользователя -->
+	<set name="now" clone="_users" act="update">
+		<!-- Текущий авторизованный пользователь -->
+		<block name="_login" onread="@current" />
+		<block name="currentlocation" onupdate="создаёт новую тему" />
+	</set>
+</location>
+
+<!-- Страница редактирования темы -->
+<location base="/[sections:catname]/[topics:subject]/edit"
+			onsuccess="/[sections:catname]/[topics:subject]/" 
+			onfail="self" template="edittopic.tmpl">
+	<set name="sections">
+		<block name="catname" />
+		<set name="topics" order="important DESC, pubdate DESC" act="@input">
+			<block name="subject" onupdate="@input" />
+			<block name="message" onupdate="@input" />
+			<block name="editdate" onupdate="@current" />
+			<block name="editip" onupdate="@current" />
+			<set name="messicons">
+				<block name="icon" />
+			</set>
+		</set>
+	</set>
+	<!-- Текущее местоположение пользователя -->
+	<set name="now" clone="_users" act="update">
+		<!-- Текущий авторизованный пользователь -->
+		<block name="_login" onread="@current" />
+		<block name="currentlocation" onupdate="редактирует тему #topics:subject" />
+	</set>
+</location>
+
+<!-- Локация закрытия темы -->
+<location base="/[sections:catname]/[topics:subject]/close"
+			onsuccess="previous" onfail="self" template="disallowed.tmpl"> 
+	<set name="topics" act="update">
+		<block name="polls" default="user:r,owner:r,all:r" />
+		<block name="closed" onupdate="all: -" />
+	</set>
+</location>
+
+<!-- Локация открытия темы -->
+<location base="/[sections:catname]/[topics:subject]/open" onsuccess="previous" onfail="self">
+	<set name="topics" act="update">
+		<block name="polls" default="user:ru,owner:crud,all:r" />
+		<block name="closed" onupdate="all: c" />
+	</set>
+</location>
+
+<!-- Локации пометки темы, как важной -->
+<location base="/[sections:catname]/[topics:subject]/important" onsuccess="previous" onfail="self">
+	<set name="topics" act="update">
+		<block name="important" onupdate="1" />
+	</set>
+</location>
+
+<!-- Локации пометки темы, как неважной -->
+<location base="/[sections:catname]/[topics:subject]/unimportant" onsuccess="previous" onfail="self">
+	<set name="topics" act="update">
+		<block name="important" onupdate="1" />
+	</set>
+</location>
+
+<!-- Локация ниже выполняет две функции:
+	 1) Просмотр темы форума вместе с сообщениями
+	 2) Добавление ответа на форуме
+-->
+<location base="/[sections:catname]/[topics:subject]/,
+				/[sections:catname]/[topics:subject]/[answers@page]"
+			onsuccess="previous" template="message.tmpl" onfail="self"> 
+	<set name="sections">
+		<block name="catname" />
+		<set name="topics">
+			<block name="subject" />
+			<block name="message" />
+			<block name="pubdate" />
+			<block name="pubip" />
+			<set name="messicons">
+				<block name="icon" />
+			</set>
+			<set name="poll_answers">
+				<block name="answer_text" />
+				<block name="answer_vote" />
+			</set>
+			<set name="answers" order="pubdate DESC" act="@input" limit="20">
+				<block name="message" oncreate="@input" />
+				<block name="pubdate" oncreate="@current" />
+				<block name="pubip" oncreate="@current" />
+			</set>
+		</set>
+	</set>
+	<set name="now" clone="_users" act="update">
+		<block name="_login" onread="@current" /> 
+		<block name="currentlocation" onupdate="просматривает тему #topics:subject" />
+	</set>
+</location>
+
+<!-- Проголосовать, если есть голосование -->
+<location base="/[sections:catname]/[topics:subject]/vote" onsuccess="previous">
+	<set name="sections">
+		<set name="topics">
+			<set name="poll_answers" id="@input" act="update">
+				<block name="answer_vote" onupdate="1" />
+			</set>
+		</set>
+	</set>
+</location>
+
+<!-- Создать голосование -->
+<location base="/[sections:catname]/[topics:subject]/vote/create" onsuccess="previous">
+	<set name="sections">
+		<set name="topics">
+			<block name="poll_question" />
+			<set name="poll_answers" id="@input" act="create">
+				<block name="answer_text" oncreate="@input" />
+			</set>
+		</set>
+	</set>
+</location>
+
+<!-- Удалить голосование -->
+<location base="/[sections:catname]/[topics:subject]/vote/delete" onsuccess="previous">
+	<set name="sections">
+		<set name="topics" act="update">
+			<block name="poll_question" onupdate="" />
+			<set name="poll_answers" id="@input" act="delete">
+
+			</set>
+		</set>
+	</set>
+</location>
+
+<!-- Отредактировать ответ в теме -->
+<location base="/[sections:catname]/[topics:subject]/[answers@id]/edit"
+			onsuccess="/[sections:catname]/[topics:subject]/" template="editmessage.tmpl">
+	<set name="sections">
+		<block name="catname" />
+		<set name="topics">
+			<block name="subject" />
+			<block name="message" />
+			<block name="pubdate" />
+			<block name="pubip" />
+			<set name="messicons">
+				<block name="icon" />
+			</set>
+			<set name="answers" act="@input">
+				<block name="message" onupdate="@input" />
+				<block name="editdate" onupdate="@current" />
+				<block name="editip" onupdate="@current" />
+			</set>
+		</set>
+	</set>
+	<set name="now" clone="_users" act="update">
+		<block name="_login" onread="@current" />
+		<block name="currentlocation"
+			   onupdate="редактирует сообщение в теме #topics:subject" />
+	</set>
+</location>
+
+<!-- Поиск всех тем данного пользователя -->
+<location base="/search/topics/[_users:login], /search/topics/[_users:login]/page[topics@page]"
+			template="search.tmpl">
+	<set name="_users">
+		<block name="name" />
+		<set name="topics" limit="20">
+			<block name="name" />
+			<block name="message" />
+		</set>
+	</set>
+	<set name="now" clone="_users" act="update"><!-- Текущее местоположение пользователя -->
+		<block name="_login" onread="@current" /> <!-- Текущий авторизованный пользователь -->
+		<block name="currentlocation" onupdate="осуществляет поиск" />
+	</set>
+</location>
+
+<!-- Поиск всех ответов данного пользователя -->
+<location base="/search/answers/[_users:login], /search/topics/[_users:login]/page[answers@page]"
+			template="search.tmpl">
+	<set name="_users">
+		<block name="name" />
+		<set name="topics">
+			<block name="name" />
+			<set name="answers" limit="20">
+				<block name="message" />
+			</set>
+		</set>
+	</set>
+	<set name="now" clone="_users" act="update">
+		<block name="_login" onread="@current" />
+		<block name="currentlocation" onupdate="осуществляет поиск" />
+	</set>
+</location>
+
+<!-- Просмотр профиля пользователя -->
+<location base="/profile/[_users:login]" template="profile.tmpl">
+	<set name="_users">
+		<block name="_login" />
+		<block name="email" />
+		<block name="name" />
+		<block name="city" />
+		<block name="birthdate" />
+		<block name="inf" />
+		<block name="icq" />
+		<block name="website" />
+		<block name="status" />
+		<block name="date_reg" />
+		<block name="ip_reg" />
+		<block name="lastvisit_date" />
+		<block name="lastvisit_ip" />
+		<block name="currentlocation" />
+		<block name="avatar" />
+	</set>
+	<set name="now" clone="_users" act="update">
+		<block name="email" onread="@current" />
+		<block name="currentlocation"
+			   onupdate="просматривает профиль пользователя #_users:login" />
+	</set>
+</location>
+
+<!-- Просмотр списка пользователей -->
+<location base="/users/[_users@page], /users">
+	<set name="_users">
+		<block name="_login" />
+		<block name="status" />
+		<set name="_groups">
+			<block name="name" />
+		</set>
+		<set name="topics" func="count">
+		
+		</set>
+		<set name="answers" func="count">
+		
+		</set>
+	</set>
+	<set name="now" clone="_users" act="update"><!-- Текущее местоположение пользователя -->
+		<block name="email" onread="@current" /> <!-- Текущий авторизованный пользователь -->
+		<block name="currentlocation" onupdate="просматривает список пользователей" />
+	</set>
+</location>
+
+<!-- Просмотр и редактирование профиля авторизованного пользователя -->
+<location base="/settings">
+	<set name="_users" act="@input">
+		<block name="_login" onread="@current" />
+		<block name="_password" onread="@input" />
+		<block name="mail" confirm="1" onupdate="@input" />
+		<block name="name" onupdate="@input" />
+		<block name="city" onupdate="@input" />
+		<block name="birthdate" onupdate="@input" />
+		<block name="inf" onupdate="@input" />
+		<block name="icq" onupdate="@input" />
+		<block name="website" onupdate="@input" />
+	</set>
+</location>
+
+<!-- Просмотр и редактирование настроек авторизованного пользователя -->
+<location base="/settings/preferences" act="@input">
+	<set name="_users">
+		<block name="_login" onread="@current" />
+		<block name="_password" onread="@input" />
+		<block name="show_forum" onupdate="@input" />
+		<block name="show_smiles" onupdate="@input" />
+		<block name="show_avatars" onupdate="@input" />
+	</set>
+</location>
+
+<!-- Просмотр и редактирование аватары авторизованного пользователя -->
+<location base="/settings/avatars">
+	<set name="_users">
+		<block name="_login" onread="@current" />
+		<block name="_password" onupdate="@input" />
+		<block name="avatar" onupdate="@input" />
+	</set>
+</location>
+
+<!-- Изменение пароля авторизованного пользователя -->
+<location base="/settings/changepassword">
+	<set name="_users" act="@input">
+		<block name="_login" onread="@current" />
+		<block name="_password" alias="oldpassword" onread="@input" />
+		<block name="_password" onupdate="@input" />
+	</set>
+</location>
+
+<!-- Почта -->
+<location base="/mail" template="mail.tmpl">
+	<set name="inbox" clone="mail" func="count" condition="recipient=@current">
+
+	</set>
+
+	<set name="sent" clone="mail" func="count" condition="author=@current">
+
+	</set>
+</location>
+
+<!-- Почта: входящие -->
+<location base="/mail/inbox" template="mailfolder.tmpl">
+	<set name="mail" condition="recipient=@current">
+		<block name="subject" />
+		<block name="message" />
+		<block name="read" />
+		<block name="pubdate" />
+		<block name="pubip" />
+		<set name="recipient">
+			<block name="_login" />
+		</set>
+	</set>
+</location>
+
+<!-- Почта: отправленные -->
+<location base="/mail/sent" template="mailfolder.tmpl">
+	<set name="mail" condition="author=@current">
+		<block name="subject" />
+		<block name="message" />
+		<block name="read" />
+		<block name="pubdate" />
+		<block name="pubip" />
+		<set name="recipient">
+			<block name="_login" />
+		</set>
+	</set>
+</location>
+
+<!-- Почта: просмотр сообщения -->
+<location base="/mail/view/[mail@id]" template="letter.tmpl">
+	<set name="mail">
+		<block name="subject" />
+		<block name="message" />
+		<block name="pubdate" />
+		<block name="pubip" />
+		<set name="recipient">
+			<block name="_login" />
+		</set>
+	</set>
+</location>
+
+<!-- Почта: локация отправки сообщения -->
+<location base="/mail/send" template="new.tmpl" onsuccess="/mail" >
+	<set name="mail" act="@input">
+		<block name="subject" oncreate="@input" />
+		<block name="message" oncreate="@input" />
+		<block name="pubdate" oncreate="@current" />
+		<block name="pubip" oncreate="@current" />
+		<set name="recipient">
+			<block name="_login" onread="@input" />
+		</set>
+	</set>
+</location>
+
+<!-- Почта: локация добавления в список игнорируемых -->
+<location base="/ignore">
+	<set name="_users" act="update">
+		<block name="_login" onread="@current" />
+		<block name="ignorelist" onupdate="@input:r" />
+	</set>
+</location>
+
+<!-- Почта: локация удаления из списка игнорируемых -->
+<location base="/unignore">
+	<set name="_users" act="update">
+		<block name="_login" onread="@current" />
+		<block name="ignorelist" onupdate="@input" alias="id" format="%d:crd"  />
+	</set>
+</location>
+
+<!-- Просмотр библиотеки аватаров -->
+<location base="/avatars/[avatarcat:category]" template="avatar.tmpl">
+	<set name="_users" act="@input">
+		<block name="avatar" default="Главная" onupdate="#avatars:avatar" />
+	</set>
+	<set name="avatarcat">
+		<block name="category" />
+		<set name="avatars">
+			<block name="avatar" />
+		</set>
+	</set>
+	<set name="now" clone="_users" act="update">
+		<block name="_login" onread="@current" />
+		<block name="currentlocation" onupdate="выбирает аватар" />
+	</set>
+</location>
+
+<!-- Удаление темы на форуме -->
+<location base="/[sections:catname]/delete" onsuccess="/[sections:catname]">
+	<set name="sections">
+		<set name="topics" act="delete" id="@input">
+			<set name="answers" act="delete">
+
+			</set>
+		</set>
+	</set>
+</location>
+
+<!-- Удаление сообщения на форуме -->
+<location base="/[sections:catname]/[topics:subject]/delete"
+			onsuccess="/[sections:catname]/[topics:subject]">
+	<set name="sections">
+		<block name="catname" />
+		<set name="topics">
+			<block name="message" />
+			<set name="answers" act="delete" id="@input">
+
+			</set>
+		</set>
+	</set>
+</location>
+
+<!-- Перемещение темы на форуме -->
+<location base="/[sections:catname]/[topics:subject]/move"
+			onsuccess="/[sections:catname]/[topics:subject]" template="move.tmpl">
+	<set name="sections">
+		<block name="catname" />
+		<set name="topics" act="update" parentid="@input">
+
+		</set>
+	</set>
+</location>
+
+<!-- Авторизация пользователя -->
+<location base="/login" onsuccess="previous" onfail="wronguser.tmpl">
+	<set name="_users" act="auth">
+		<block name="_login" onread="@input" />
+		<block name="_password" onread="@input" />
+		<block name="lastvisit_date" onauth="@current" />
+		<block name="lastvisit_ip" onauth="@current" />
+	</set>
+</location>
+
+<!-- Выход пользователя -->
+<location base="/logout" onsuccess="previous">
+	<set name="_users" act="logout">
+
+	</set>
+</location>
+
+<!-- Регистрация пользователя -->
+<location base="/register" template="reg.tmpl">
+	<set name="_users" act="@input">
+		<block name="protect_code" onread="@input" />
+	</set>
+</location>
+
+<!-- Шаблон локации, отправляемой на E-Mail -->
+<location base="/registersend" template="regemail.tmpl"
+			output="email" onsuccess="/register" onfail="/register">
+	<set name="_users" act="@input">
+		<block name="_login" oncreate="@input" />
+		<block name="_password" alias="checkpassword" onread="@input" />
+		<block name="_password" oncreate="@input" />
+		<block name="email" oncreate="@input" send="1" />
+		<block name="protect_code" onread="@input" />
+	</set>
+</location>
+
+<!-- Страница сброса пароля пользователя -->
+<location base="/passwordreset" template="resetpass.tmpl">
+	<set name="_users" act="@input">
+		<block name="protect_code" onread="@input" />
+	</set>
+</location>
+
+<!-- Страница отправки нового пароля пользователя -->
+<location base="/passremind" template="remindletter.tmpl" output="email"
+			onsuccess="/passwordreset" onfail="/passwordreset">
+	<set name="_users" act="@input">
+		<block name="email" onread="@input" send="1" />
+		<block name="protect_code" mode="update" />
+		<block name="_password" />
+	</set>
+</location>
+
+<!-- Библиотека смайлов -->
+<location base="/smiles/[smilecat:catname],/smiles" template="smiles.tmpl">
+	<set name="smilecat">
+		<block name="catname" default="Главная" />
+		<set name="smiles">
+			<block name="smileimage" />
+			<block name="code" />
+			<block name="descr" />
+		</set>
+	</set>
+</location>
+
+<!-- Администрирование категорий -->
+<location base="/admin/sections" template="admin_sections.tmpl" allowed="admin" disallowed="all">
+	<set name="sections">
+		<block name="catname" />
+	</set>
+</location>
+
+<!-- Изменение порядка сортировки категорий -->
+<location base="/admin/sections/sort/[sections@id]" template="admin_sort.tmpl"
+			allowed="admin" disallowed="all">
+	<set name="sections" act="@input">
+		<block name="catsort" onupdate="@input" />
+	</set>
+</location>
+
+<!-- Изменение информации о категории -->
+<location base="/admin/sections/edit, /admin/sections/edit/[sections@id]"
+			onsuccess="/admin/sections" onfail="/admin/sections/error"
+			allowed="admin" disallowed="all">
+	<set name="sections" act="@input">
+		<block name="catname" oncreate="@input" onupdate="@input" />
+		<block name="description" oncreate="@input" onupdate="@input" />
+		
+		<set name="caticons">
+			<block name="icon" />
+		</set>
+		<block name="privateflag" oncreate="@input" onupdate="@input" />
+		<block name="messpermissions" oncreate="@input" onupdate="@input" />
+		<block name="visibility" oncreate="@input" onupdate="@input" />
+		<block name="moderpermissions" oncreate="@input" onupdate="@input" />
+	</set>
+</location>
+
+<!-- Администрирование групп -->
+<location base="/admin/groups" onsuccess="previous" template="groups.tmpl"
+			allowed="admin" disallowed="all">
+	<set name="_groups" act="@input" id="@input" validact="delete update">
+		<block name="_priority" oncreate="@input" />
+		<block name="_name" oncreate="@input" />
+		<block name="description"  oncreate="@input" />
+		<block name="color" oncreate="@input" />
+	</set>
+</location>
+
+<!-- Назначение, обновление и снятие групп с определённых пользователей -->
+<location base="/admin/groups/[_users:_login]" onsuccess="previous" template="assigngroups.tmpl"
+			allowed="admin" disallowed="all">
+	<set name="_users">
+		<block name="_login" />
+		<set name="_groups" act="@input" modify="link" id="@input"
+				validact="create delete update">
+
+		</set>
+	</set>
+</location>
+
+<!-- Администрирование глобальной системы блокировки -->
+<location base="/admin/ban" template="ban.tmpl" onsuccess="previous" allowed="admin" disallowed="all">
+	<set name="banlist" act="@input" id="@input" validact="delete update">
+		<block name="globalpermissions" oncreate="@input" />
+		<block name="bandate"  oncreate="@current" />
+		<block name="banexpires"  oncreate="@input" />
+		<block name="comment" oncreate="@input" />
+	</set>
+</location>
+
+<!-- Администрирование библиотеки смайлов -->
+<location base="/admin/smiles, /admin/smiles/[smilecat:name]" template="adminsmiles.tmpl"
+			allowed="admin" disallowed="all">
+	<set name="smilecat">
+		<block name="catname" default="Главная" />
+		<set name="smiles" act="@input">
+			<block name="smileimage" oncreate="@input" />
+			<block name="code" oncreate="@input" />
+			<block name="descr" oncreate="@input" />
+		</set>
+	</set>
+</location>
+
+<!-- Создание новой директории смайлов -->
+<location base="/admin/smiles/newcat" onsuccess="/admin/smiles/[smilecat:name]"
+			onfail="self" template="newcatsmiles.tmpl" allowed="admin" disallowed="all">
+	<set name="smilecat" act="@input">
+		<block name="category" oncreate="@input" />
+	</set>
+</location>
+
+<!-- Удалить полностью категорию со смайлами -->
+<location base="/admin/smiles/deletecat" allowed="admin" disallowed="all">
+	<set name="smilecat" act="delete">
+		<block name="category" onread="@input" />
+		<set name="smiles" act="delete">
+
+		</set>
+	</set>
+</location>
+
+<!-- Удалить полностью категорию с аватарами -->
+<location base="/admin/avatars/deletecat" allowed="admin" disallowed="all">
+	<set name="avatarcat" act="delete">
+		<block name="category" onread="@input" />
+		<set name="avatars" act="delete">
+
+		</set>
+	</set>
+</location>
+
+<!-- Администрирование библиотеки аватаров -->
+<location base="/admin/avatars, /admin/avatars/[avatarcat:name]" template="adminavatars.tmpl" 
+			allowed="admin" disallowed="all">
+	<set name="avatarcat">
+		<block name="category" default="Главная" />
+		<set name="avatars" act="@input">
+			<block name="avatar" oncreate="@input"/>
+		</set>
+	</set>
+</location>
+
+<!-- Создать новую категорию с аватарами -->
+<location base="/admin/avatars/newcat" onsuccess="/admin/avatars/[avatarcat:name]" onfail="self"
+			template="newcatavatars.tmpl" allowed="admin" disallowed="all">
+	<set name="avatarcat" act="@input">
+		<block name="category" oncreate="@input" />
+	</set>
+</location>
+
+<!-- Удалить полностью категорию с аватарами -->
+<location base="/admin/avatars/deletecat" allowed="admin" disallowed="all">
+	<set name="avatarcat" act="delete">
+		<block name="category" onread="@input" />
+		<set name="avatars" act="delete">
+
+		</set>
+	</set>
+</location>
+
+<!-- пустые локации, статические страницы -->
+<location base="/rules" template="rules.tmpl">
+
+</location>
+</bml>
